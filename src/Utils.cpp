@@ -102,6 +102,8 @@ RCP<sparse_matrix_type> get11(RCP<sparse_matrix_type> A) {
 		Teuchos::ArrayView<const LO> indicies;
 		Teuchos::ArrayView<const ST> values;
 
+		A->getLocalRowView(row,indicies,values);
+
 		Teuchos::Array<LO> new_indicies;
 		Teuchos::Array<ST> new_values;
 
@@ -123,7 +125,32 @@ RCP<sparse_matrix_type> get11(RCP<sparse_matrix_type> A) {
 
 RCP<sparse_matrix_type> scatter_columns(RCP<sparse_matrix_type> A,std::vector<LO>& new_columns) {
 
-}
+	RCP<const map_type> a_map = A->getRowMap();
+	const int num_a = a_map->getNodeNumElements();
+
+	RCP<sparse_matrix_type> newA =
+			Tpetra::createCrsMatrix<ST,LO,GO,Node>(a_map,A->getCrsGraph()->getNodeMaxNumRowEntries());
+
+
+	for (int row = 0; row < num_a; ++row) {
+		/*
+		 * scatter columns
+		 */
+		Teuchos::ArrayView<const LO> indicies;
+		Teuchos::Array<LO> new_indicies(indicies.size());
+		Teuchos::ArrayView<const ST> values;
+
+		A->getLocalRowView(row,indicies,values);
+
+		for (int i = 0; i < indicies.size(); ++i) {
+			new_indicies[i] = new_columns[indicies[i]];
+		}
+
+		newA->insertLocalValues(row,Teuchos::arrayViewFromVector(new_columns),values);
+	}
+
+	newA->fillComplete();
+	return newA;
 
 }
 
