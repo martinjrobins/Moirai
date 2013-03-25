@@ -67,6 +67,7 @@ public:
 
 	Mesh();
 	void initialise(const double dx);
+	std::vector<GO>& get_global_interior_ids_on_boundary();
 	std::vector<LO>& get_local_boundary_node_ids();
 	std::vector<LO>& get_global_boundary_node_ids();
 	std::vector<LO>& get_global_interior_node_ids();
@@ -91,6 +92,7 @@ private:
 	std::vector<LO> local_boundary_ids;
 	std::vector<GO> global_boundary_ids;
 	std::vector<GO> global_interior_ids;
+	std::vector<GO> global_interior_ids_on_boundary;
 
 	int num_nodes_per_cell;
 	int num_nodes_per_face;

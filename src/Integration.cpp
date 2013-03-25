@@ -506,10 +506,11 @@ RCP<sparse_matrix_type> construct_boundary_mass_matrix(Mesh& mesh) {
 	/**********************************************************************************/
 	/********************************* GET CUBATURE For 2D cells***********************/
 	/**********************************************************************************/
-	shards::CellTopology cellType = get_face_type(mesh);
+	shards::CellTopology faceType = get_face_type(mesh);
+	shards::CellTopology cellType = get_cell_type(mesh);
 	DefaultCubatureFactory<ST>  cubFactory;
 	const double cubDegree = 2;
-	RCP<Intrepid::Cubature<ST> > cubature = cubFactory.create (cellType, cubDegree);
+	RCP<Intrepid::Cubature<ST> > cubature = cubFactory.create (faceType, cubDegree);
 
 	int cubDim       = cubature->getDimension ();
 	int numCubPoints = cubature->getNumPoints ();
@@ -599,8 +600,9 @@ RCP<sparse_matrix_type> construct_boundary_mass_matrix(Mesh& mesh) {
 
 		for (int face = worksetBegin; face < worksetEnd; ++face) {
 			const int iface = mesh.get_boundary_faces()[face].ordinal;
+			const int ielem = mesh.get_boundary_faces()[face].cell_id;
 			for (int node = 0; node < numNodesPerElem; ++node) {
-				const int node_num = mesh.get_boundary_faces()[face].cell_node_ids[node];
+				const int node_num = mesh.get_cells()[ielem].node_ids[node];
 				for (int j = 0; j < spaceDim; ++j) {
 					cellWorkset(0, node, j) = mesh.get_nodes()[node_num].x[j];
 				}

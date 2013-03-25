@@ -31,12 +31,15 @@
 namespace Moirai {
 
 
-RCP<sparse_matrix_type> construct_saddle_point_matrix(RCP<sparse_matrix_type> A, RCP<sparse_matrix_type> B);
+RCP<sparse_matrix_type> construct_saddle_point_matrix(RCP<const sparse_matrix_type> A, RCP<const sparse_matrix_type> B);
 
-RCP<sparse_matrix_type> get11(RCP<sparse_matrix_type> A);
+RCP<sparse_matrix_type> construct_anti_symetric_saddle_point_matrix(RCP<const sparse_matrix_type> A, RCP<const sparse_matrix_type> B);
 
-RCP<sparse_matrix_type> scatter_columns(RCP<sparse_matrix_type> A,std::vector<LO>& new_columns);
+RCP<sparse_matrix_type> get11(RCP<const sparse_matrix_type> A);
 
+RCP<sparse_matrix_type> scatter_columns(RCP<const sparse_matrix_type> A,RCP<const map_type> col_map, const std::vector<LO>& new_columns);
+
+void update(const double alpha, RCP<sparse_matrix_type> A, const double beta, RCP<const sparse_matrix_type> B);
 
 }
 

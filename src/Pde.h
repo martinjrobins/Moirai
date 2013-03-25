@@ -29,7 +29,14 @@
 #include "Types.h"
 
 #include <vector>
+
 #include <tuple>
+
+#include <Thyra_TpetraThyraWrappers.hpp>
+
+#include <Thyra_LinearOpWithSolveBase.hpp>
+
+#include <BelosSolverManager.hpp>
 
 namespace Moirai {
 
@@ -37,15 +44,22 @@ class Pde {
 public:
 	Pde(const double dx, const double dt);
 	void timestep();
-	void add_particle(const double x, const double y, const double z);
-	void timestep_and_generate_particles(std::vector<std::tuple<double,double,double> > positions);
+	void add_particle(const ST x, const ST y, const ST z);
+	void timestep_and_generate_particles(std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z);
 private:
 	double dt;
-	static const double omega = 1.0;
+	static constexpr double omega = 1.0;
 	Mesh mesh;
 
-	RCP<vector_type> X,Y,u,lambda;
-	RCP<sparse_matrix_type> LHS,RHS;
+	RCP<vector_type> volumes,areas;
+	RCP<multivector_type> X,Y,u,lambda,flux,number_of_particles;
+	RCP<sparse_matrix_type> LHS,LHS_prec,RHS,K,Mi,Mb;
+
+	RCP<Thyra::MultiVectorBase<ST> > X_w,Y_w;
+	RCP<const Thyra::LinearOpBase<ST> > RHS_w;
+	RCP<Thyra::LinearOpWithSolveBase<ST> > LHS_w;
+
+	RCP<Belos::SolverManager<ST, multivector_type, operator_type> > solver;
 
 	void initialise_from_mesh();
 };

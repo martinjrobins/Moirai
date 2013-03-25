@@ -57,3 +57,4 @@ enable_testing()
 # the project's entire directory structure. 
 set(Moirai_INCLUDE_DIRECTORIES  "/home/mrobins/pkg/tina/include" "/scratch/robinsonm/pkg/include" ${Moirai_SOURCE_DIR}/src ${VTK_INCLUDE_DIRS} ${MPI_CXX_INCLUDE_PATH} ${Trilinos_INCLUDE_DIRS} ${Trilinos_TPL_INCLUDE_DIRS})
 add_subdirectory (src)
+add_subdirectory (examples)

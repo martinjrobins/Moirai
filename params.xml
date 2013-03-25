@@ -1,0 +1,12 @@
+<ParameterList>
+  <Parameter name="Linear Solver Type" type="string" value="Belos"/>
+  <Parameter name="Preconditioner Type" type="string" value="None"/>
+  <ParameterList name="Linear Solver Types">
+    <ParameterList name="Belos">
+      <Parameter name="Solver Type" type="string" value="Block GMRES"/>
+      <ParameterList name="VerboseObject">
+        <Parameter name="Verbosity Level" type="string" value="high"/>
+      </ParameterList>
+    </ParameterList>
+  </ParameterList>
+</ParameterList>

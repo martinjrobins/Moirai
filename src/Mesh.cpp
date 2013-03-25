@@ -261,7 +261,8 @@ void Mesh::initialise(const double dx) {
 		if (is_boundary[i]) {
 			boundary_id[i] = local_boundary_ids.size();
 			local_boundary_ids.push_back(i);
-			global_boundary_ids.push_back(i);
+			global_boundary_ids.push_back(boundary_id[i]);
+			global_interior_ids_on_boundary.push_back(i);
 		}
 	}
 
@@ -275,6 +276,10 @@ void Mesh::initialise(const double dx) {
 
 std::vector<Mesh::LO>& Mesh::get_local_boundary_node_ids() {
 	return local_boundary_ids;
+}
+
+std::vector<Mesh::GO>& Mesh::get_global_interior_ids_on_boundary() {
+	return global_interior_ids_on_boundary;
 }
 
 std::vector<Mesh::LO>& Mesh::get_global_boundary_node_ids() {
