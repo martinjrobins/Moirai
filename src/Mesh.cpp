@@ -274,6 +274,15 @@ void Mesh::initialise(const double dx) {
 	}
 }
 
+bool Mesh::inside(const ST x, const ST y, const ST z, const ST buffer) {
+	//TODO assumes cuboid and boundary on xmax
+	if ((x >= min[0]) && (x < max[0] - buffer) && (y >= min[1]) && (y <= max[1]) && (z >= min[2]) && (z <= max[2])) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
 std::vector<Mesh::LO>& Mesh::get_local_boundary_node_ids() {
 	return local_boundary_ids;
 }

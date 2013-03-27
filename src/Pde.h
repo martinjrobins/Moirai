@@ -32,9 +32,9 @@
 
 #include <tuple>
 
-#include <Thyra_TpetraThyraWrappers.hpp>
-
-#include <Thyra_LinearOpWithSolveBase.hpp>
+//#include <Thyra_TpetraThyraWrappers.hpp>
+//
+//#include <Thyra_LinearOpWithSolveBase.hpp>
 
 #include <BelosSolverManager.hpp>
 
@@ -44,7 +44,7 @@ class Pde {
 public:
 	Pde(const double dx, const double dt);
 	void timestep();
-	void add_particle(const ST x, const ST y, const ST z);
+	bool add_particle(const ST x, const ST y, const ST z);
 	void timestep_and_generate_particles(std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z);
 private:
 	double dt;
@@ -55,9 +55,9 @@ private:
 	RCP<multivector_type> X,Y,u,lambda,flux,number_of_particles;
 	RCP<sparse_matrix_type> LHS,LHS_prec,RHS,K,Mi,Mb;
 
-	RCP<Thyra::MultiVectorBase<ST> > X_w,Y_w;
-	RCP<const Thyra::LinearOpBase<ST> > RHS_w;
-	RCP<Thyra::LinearOpWithSolveBase<ST> > LHS_w;
+//	RCP<Thyra::MultiVectorBase<ST> > X_w,Y_w;
+//	RCP<const Thyra::LinearOpBase<ST> > RHS_w;
+//	RCP<Thyra::LinearOpWithSolveBase<ST> > LHS_w;
 
 	RCP<Belos::SolverManager<ST, multivector_type, operator_type> > solver;
 

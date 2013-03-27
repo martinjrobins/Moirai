@@ -193,6 +193,34 @@ RCP<sparse_matrix_type> get11(RCP<const sparse_matrix_type> A) {
 	return A11;
 }
 
+RCP<sparse_matrix_type> getDiag(RCP<const sparse_matrix_type> A) {
+
+	RCP<const map_type> a_map = A->getRowMap();
+	const int num_a = a_map->getNodeNumElements();
+
+	RCP<sparse_matrix_type> Adiag = rcp(new
+			sparse_matrix_type(a_map,A->getColMap(),A->getCrsGraph()->getNodeMaxNumRowEntries()));
+
+	for (int row = num_a/2; row < num_a; ++row) {
+		Teuchos::ArrayView<const LO> indicies;
+		Teuchos::ArrayView<const ST> values;
+
+		A->getLocalRowView(row,indicies,values);
+
+		const int numEntries = indicies.size();
+		for (int col = 0; col < numEntries; ++col) {
+			if (indicies[col] == row) {
+				Adiag->insertLocalValues(row,Teuchos::arrayView(&row,1),Teuchos::arrayView(&values[col],1));
+
+			}
+		}
+
+	}
+
+	Adiag->fillComplete();
+	return Adiag;
+}
+
 RCP<sparse_matrix_type> scatter_columns(RCP<const sparse_matrix_type> A,RCP<const map_type> col_map, const std::vector<LO>& new_columns) {
 
 	RCP<const map_type> a_map = A->getRowMap();

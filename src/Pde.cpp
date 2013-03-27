@@ -31,7 +31,7 @@
 #include <boost/random.hpp>
 
 #include <Tpetra_RTI.hpp>
-#include <Stratimikos_DefaultLinearSolverBuilder.hpp>
+//#include <Stratimikos_DefaultLinearSolverBuilder.hpp>
 #include <BelosLinearProblem.hpp>
 #include <BelosSolverFactory.hpp>
 #include <BelosTpetraAdapter.hpp>
@@ -47,7 +47,7 @@ constexpr double Pde::omega;
 typedef boost::mt19937  base_generator_type;
 static base_generator_type R;
 
-Pde::Pde(const double dx, const double dt):dt(dt) {
+Pde::Pde(const double dx, const double dt, const double buffer):dt(dt),buffer(buffer) {
 	LOG(1,"Initialising mesh...");
 	mesh.initialise(dx);
 	LOG(1,"Initialising matricies with dt = "<<dt<<" and omega = "<<omega);
@@ -84,8 +84,7 @@ void Pde::timestep() {
 	}
 }
 
-void Pde::add_particle(const ST x, const ST y, const ST z) {
-
+bool Pde::add_particle(const ST x, const ST y, const ST z) {
 	const int local_index = mesh.get_nearest_node(x,y,z);
 	X->getVectorNonConst(0)->sumIntoLocalValue(local_index, 1.0/volumes->get1dView()[local_index]);
 }
@@ -251,11 +250,24 @@ void Pde::initialise_from_mesh() {
 
 
 	RCP<sparse_matrix_type> A11 = get11(A);
+	RCP<sparse_matrix_type> Adiag = getDiag(A);
 
 	/*
 	 * LHS_prec = [A11,omegaB;omegaB^t,zero]
 	 */
-	LHS_prec = construct_saddle_point_matrix(A11,B);
+	LHS_prec = construct_saddle_point_matrix(Adiag,B);
+//	const int n = LHS_prec->getNodeNumRows();
+//	for (int row = 0; row < n; ++row) {
+//		Teuchos::ArrayView<const LO> indicies;
+//		Teuchos::ArrayView<const ST> values;
+//		LHS_prec->getLocalRowView(row,indicies,values);
+//		const int nc = indicies.size();
+//		for (int j = 0; j < nc; ++j) {
+//			if (values[j]==0) {
+//				ERROR("found a zero!");
+//			}
+//		}
+//	}
 
 	/*
 	 * A_rhs = Mi + (omega-1)*dt*K
@@ -298,31 +310,41 @@ void Pde::initialise_from_mesh() {
 	// Create the GMRES solver.
 	Belos::SolverFactory<ST, multivector_type, operator_type> factory;
 	solver = factory.create ("GMRES", belosParams);
+//	Teuchos::Array<std::string> names = factory.supportedSolverNames();
+//	std::cout << "list of supported solver names:" << std::endl;
+//	for (int i = 0; i < names.size(); ++i) {
+//		std::cout << names[i] << std::endl;
+//	}
+//	Teuchos::RCP<const Teuchos::ParameterList> params = solver->getCurrentParameters();
+//	std::cout << "solver created with following parameters:" << std::endl;
+//	for (Teuchos::ParameterList::ConstIterator i = params->begin(); i != params->end(); ++i) {
+//		std::cout << i->first << ":  " << i->second << std::endl;
+//	}
 	// Tell the solver what problem you want to solve.
 	solver->setProblem (problem);
 
 
-	/*
-	 * Create thyra objects to solve
-	 */
-	Stratimikos::DefaultLinearSolverBuilder strategy;
-	strategy.paramsXmlFileName("params.xml");
-	strategy.readParameters(&std::cout);
-	RCP<const Thyra::LinearOpWithSolveFactoryBase<ST> > lowsFactory = strategy.createLinearSolveStrategy("Belos");
-
-	X_w = Thyra::createMultiVector(X);
-	Y_w = Thyra::createMultiVector(Y);
-
-	RHS_w = Thyra::createConstLinearOp<ST, LO, GO, Node>(RHS);
-	RCP<const Thyra::LinearOpBase<ST> > LHS_prec_w = Thyra::createConstLinearOp<ST, LO, GO, Node>(LHS_prec);
-
-	RCP<const Thyra::LinearOpBase<ST> > LHS_op = Thyra::createConstLinearOp<ST, LO, GO, Node>(LHS);
-
-	LHS_w = lowsFactory->createOp();
-	//Thyra::initializeOp(*lowsFactory,LHSop,LHS.ptr());
-	//Thyra::initializeApproxPreconditionedOp(*lowsFactory,LHSop,LHS_prec,LHS.ptr());
-	//Thyra::initializePreconditionedOp<ST>(*lowsFactory,LHSop,Thyra::unspecifiedPrec<ST>(LHS_prec),LHS.ptr());
-	Thyra::initializePreconditionedOp<ST>(*lowsFactory,LHS_op,Thyra::rightPrec<ST>(LHS_prec_w),LHS_w.ptr());
+//	/*
+//	 * Create thyra objects to solve
+//	 */
+//	Stratimikos::DefaultLinearSolverBuilder strategy;
+//	strategy.paramsXmlFileName("params.xml");
+//	strategy.readParameters(&std::cout);
+//	RCP<const Thyra::LinearOpWithSolveFactoryBase<ST> > lowsFactory = strategy.createLinearSolveStrategy("Belos");
+//
+//	X_w = Thyra::createMultiVector(X);
+//	Y_w = Thyra::createMultiVector(Y);
+//
+//	RHS_w = Thyra::createConstLinearOp<ST, LO, GO, Node>(RHS);
+//	RCP<const Thyra::LinearOpBase<ST> > LHS_prec_w = Thyra::createConstLinearOp<ST, LO, GO, Node>(LHS_prec);
+//
+//	RCP<const Thyra::LinearOpBase<ST> > LHS_op = Thyra::createConstLinearOp<ST, LO, GO, Node>(LHS);
+//
+//	LHS_w = lowsFactory->createOp();
+//	//Thyra::initializeOp(*lowsFactory,LHSop,LHS.ptr());
+//	//Thyra::initializeApproxPreconditionedOp(*lowsFactory,LHSop,LHS_prec,LHS.ptr());
+//	//Thyra::initializePreconditionedOp<ST>(*lowsFactory,LHSop,Thyra::unspecifiedPrec<ST>(LHS_prec),LHS.ptr());
+//	Thyra::initializePreconditionedOp<ST>(*lowsFactory,LHS_op,Thyra::rightPrec<ST>(LHS_prec_w),LHS_w.ptr());
 }
 
 } /* namespace Moirai */

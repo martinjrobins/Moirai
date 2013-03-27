@@ -67,6 +67,7 @@ public:
 
 	Mesh();
 	void initialise(const double dx);
+	bool inside(const ST x, const ST y, const ST z, const ST buffer);
 	std::vector<GO>& get_global_interior_ids_on_boundary();
 	std::vector<LO>& get_local_boundary_node_ids();
 	std::vector<LO>& get_global_boundary_node_ids();
