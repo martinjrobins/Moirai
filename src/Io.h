@@ -1,5 +1,5 @@
 /* 
- * mpi.cpp
+ * io.h
  *
  * Copyright 2012 Martin Robinson
  *
@@ -22,10 +22,19 @@
  *      Author: mrobins
  */
 
-#include "MyMpi.h"
+#ifndef IO_MOIRAI_H_
+#define IO_MOIRAI_H_
 
-Teuchos::RCP<Teuchos::GlobalMPISession> Mpi::mpiSession;
+#include <string>
+#include <vtkUnstructuredGrid.h>
 
-void Mpi::init(int argc, char* argv[]) {
-	mpiSession = Teuchos::rcp (new Teuchos::GlobalMPISession(&argc, &argv));
+namespace Moirai {
+	void write_grid(std::string filename, vtkUnstructuredGrid* grid);
+	void write_points(std::string filename,
+			const std::vector<double>& x, const std::vector<double>& y, const std::vector<double>& z);
+	void write_column_vectors(std::string filename, std::string header,std::vector<std::vector<double>* >& columns);
 }
+
+
+
+#endif /* IO_H_ */

@@ -22,14 +22,15 @@
  *      Author: mrobins
  */
 
-#ifndef PDE_H_
-#define PDE_H_
+#ifndef PDE_MOIRAI_H_
+#define PDE_MOIRAI_H_
 
 #include "Mesh.h"
 #include "Types.h"
 
 #include <vector>
 #include <tuple>
+#include <functional>
 
 //#include <Thyra_TpetraThyraWrappers.hpp>
 //
@@ -37,22 +38,34 @@
 
 #include <BelosSolverManager.hpp>
 
+#include <vtkUnstructuredGrid.h>
+#include <vtkSmartPointer.h>
+
 namespace Moirai {
 
 class Pde {
 public:
 	Pde(const double dx, const double dt);
 	void timestep();
-	bool add_particle(const ST x, const ST y, const ST z);
-	void timestep_and_generate_particles(std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z);
+	void set_reaction(std::function<ST(ST)> function);
+	void set_diffusion();
+	void add_particle(const ST x, const ST y, const ST z);
+	void generate_particles(std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z);
+	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
+	std::string get_status_string();
+	double get_number_of_particles();
 private:
 	double dt;
+	int total_number_of_particles,number_of_particles_generated;
+	bool converged;
+	int number_of_iterations;
 	static constexpr double omega = 1.0;
 	Mesh mesh;
+	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid;
 
 	RCP<vector_type> volumes,areas;
 	RCP<multivector_type> X,Y,u,lambda,flux,number_of_particles;
-	RCP<sparse_matrix_type> LHS,LHS_prec,RHS,K,Mi,Mb;
+	RCP<sparse_matrix_type> LHS,LHS_prec,RHS,K,Mi,Mb,R,D;
 
 //	RCP<Thyra::MultiVectorBase<ST> > X_w,Y_w;
 //	RCP<const Thyra::LinearOpBase<ST> > RHS_w;

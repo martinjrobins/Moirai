@@ -34,6 +34,10 @@
 #include <limits>
 #include <math.h>
 
+#include <vtkPoints.h>
+#include <vtkHexahedron.h>
+#include <vtkIdList.h>
+
 
 namespace Moirai {
 
@@ -375,6 +379,38 @@ std::vector<Mesh::SubCell>& Mesh::get_boundary_faces() {
 
 int Mesh::get_space_dim() {
 	return space_dim;
+}
+
+vtkSmartPointer<vtkUnstructuredGrid> Mesh::get_vtk_grid() {
+	if (vtk_grid == NULL) {
+		/*
+		 * setup points
+		 */
+		vtkSmartPointer<vtkPoints> newPts = vtkSmartPointer<vtkPoints>::New();
+		const int num_points = nodes.size();
+		for (int i = 0; i < num_points; i++) {
+			newPts->InsertNextPoint(nodes[i].x[0],nodes[i].x[1],nodes[i].x[2]);
+		}
+
+
+		/*
+		 * setup cells
+		 */
+		const int num_cells = cells.size();
+		vtk_grid = vtkSmartPointer<vtkUnstructuredGrid>::New();
+		vtk_grid->Allocate(num_cells,num_cells);
+		vtk_grid->SetPoints(newPts);
+		for (int i = 0; i < num_cells; ++i) {
+			vtkSmartPointer<vtkHexahedron> newHex = vtkSmartPointer<vtkHexahedron>::New();
+			newHex->GetPointIds()-> SetNumberOfIds(num_nodes_per_cell);
+			for (int j = 0; j < num_nodes_per_cell; ++j) {
+				newHex->GetPointIds()-> SetId(j,cells[i].node_ids[j]);
+			}
+			vtk_grid->InsertNextCell(newHex->GetCellType(),newHex->GetPointIds());
+
+		}
+	}
+	return vtk_grid;
 }
 
 } /* namespace Moirai */

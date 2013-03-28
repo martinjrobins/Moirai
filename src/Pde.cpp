@@ -37,7 +37,8 @@
 #include <BelosTpetraAdapter.hpp>
 #include <BelosConfigDefs.hpp>
 
-
+#include <vtkDoubleArray.h>
+#include <vtkPointData.h>
 
 
 namespace Moirai {
@@ -47,55 +48,46 @@ constexpr double Pde::omega;
 typedef boost::mt19937  base_generator_type;
 static base_generator_type R;
 
-Pde::Pde(const double dx, const double dt):dt(dt) {
+Pde::Pde(const double dx, const double dt):
+		dt(dt),
+		total_number_of_particles(0),
+		number_of_particles_generated(0) {
+
 	LOG(1,"Initialising mesh...");
 	mesh.initialise(dx);
-	LOG(1,"Initialising matricies with dt = "<<dt<<" and omega = "<<omega);
-	initialise_from_mesh();
 	R.seed(time(NULL));
 }
 
 void Pde::timestep() {
-//	RHS_w->apply(Thyra::NOTRANS, *X_w.getConst(), Y_w.ptr(),1,0);
-//
-//	std::cout << Teuchos::describe(*LHS,Teuchos::VERB_MEDIUM);
-//
-//	Thyra::SolveStatus<ST>
-//	status = LHS_w->solve(Thyra::NOTRANS, *Y_w.getConst(), X_w.ptr());
-//
-//	std::cout << "S solve: "<< status.message << std::endl;
+	using Tpetra::RTI::reduce;
+	using Tpetra::RTI::ZeroOp;
+	using Tpetra::RTI::reductionGlob;
 
+	if (RHS.is_null()) {
+		initialise_from_mesh();
+	}
 
 	RHS->apply(*X.getConst(),*Y);
 
-	bool converged = false;
-	int numItersPerformed = 0;
 
 	solver->reset(Belos::Problem);
 	Belos::ReturnType result = solver->solve ();
 
 	converged = (result == Belos::Converged);
-	numItersPerformed = solver->getNumIters ();
 
-	if (converged) {
-		std::cout << "solver CONVERGED after "<<numItersPerformed<<" iterations."<<std::endl;
-	} else {
-		std::cout << "solver DID NOT CONVERGE after "<<numItersPerformed<<" iterations."<<std::endl;
-	}
+	Mi->apply(*u.getConst(),*number_of_particles);
+	RCP<const vector_type> num_particles = number_of_particles->getVector(0);
+	total_number_of_particles = TPETRA_REDUCE1(num_particles, num_particles, ZeroOp<ST>, std::plus<ST>());
 }
 
-bool Pde::add_particle(const ST x, const ST y, const ST z) {
+void Pde::add_particle(const ST x, const ST y, const ST z) {
 	const int local_index = mesh.get_nearest_node(x,y,z);
 	X->getVectorNonConst(0)->sumIntoLocalValue(local_index, 1.0/volumes->get1dView()[local_index]);
+	total_number_of_particles++;
 }
 
-void Pde::timestep_and_generate_particles(
+void Pde::generate_particles(
 		std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z) {
-	using Tpetra::RTI::reduce;
-	using Tpetra::RTI::ZeroOp;
-	using Tpetra::RTI::reductionGlob;
-
-	timestep();
 
 	flux->elementWiseMultiply(1.0,*areas.getConst(),*lambda.getConst(),0.0);
 
@@ -107,15 +99,8 @@ void Pde::timestep_and_generate_particles(
 	const double sum_values = *(flux_cumsum.end()-1);
 	const double Ld = sum_values/dt;
 
-	Mi->apply(*u.getConst(),*number_of_particles);
-
-	RCP<const vector_type> num_particles = number_of_particles->getVector(0);
-	const int Npde = TPETRA_REDUCE1(num_particles, num_particles, ZeroOp<ST>, std::plus<ST>());
-
-	LOG(1,"There are " << Npde << " particles in the pde");
-
 	if (Ld <= 0) return;
-	if (Npde <= 0) return;
+	if (total_number_of_particles <= 0) return;
 
 	boost::variate_generator<base_generator_type&, boost::uniform_real<> >
 	U(R,boost::uniform_real<>(0,1));
@@ -125,18 +110,18 @@ void Pde::timestep_and_generate_particles(
 	P(R,boost::poisson_distribution<>(sum_values));
 
 	//double tau = -log(U())/Ld;
-	//int Ngenerated = 0;
+	//number_of_particles_generated = 0;
 	//while (tau < dt) {
-	int Ngenerated = P();
+	number_of_particles_generated = P();
 
-	for (int i = 0; i < Ngenerated; ++i) {
+	for (int i = 0; i < number_of_particles_generated; ++i) {
 		const double r = U()*sum_values;
 		std::vector<double>::iterator it = std::find_first_of(flux_cumsum.begin(),flux_cumsum.end(),&r,&r+1,
 				[](double a, double b){return a >= b;});
 		//		if ((it != bnv_cumsum.begin()) && (*it-r > r-*(it-1))) {
 		//			it--;
 		//		}
-		const int r_find = it-flux_cumsum.begin();
+		const int r_find = mesh.get_local_boundary_node_ids()[it-flux_cumsum.begin()];
 		//const int r_find = find_first(r,bnv_cumsum);
 		//const double step_length = sqrt(2.0*D*(dt-tau));
 		const double step_length = 0;
@@ -146,11 +131,19 @@ void Pde::timestep_and_generate_particles(
 		z.push_back( mesh.get_nodes()[r_find].x[2] + step_length*N() );
 
 		//tau = tau - log(U())/Ld;
-		//Ngenerated++;
+		//number_of_particles_generated++;
 	}
 
-	LOG(1,"Removed " << Ngenerated << " particles from pde");
-	u->scale((Npde-Ngenerated+Ld*dt)/Npde);
+	u->scale(ST(total_number_of_particles-number_of_particles_generated+Ld*dt)/ST(total_number_of_particles));
+	total_number_of_particles = total_number_of_particles-number_of_particles_generated+Ld*dt;
+}
+
+void Pde::set_diffusion() {
+	D = construct_stiffness_matrix(mesh);
+}
+
+void Pde::set_reaction(std::function<ST(ST)> function) {
+	R = construct_reaction_matrix(mesh, function);
 }
 
 void Pde::initialise_from_mesh() {
@@ -196,7 +189,19 @@ void Pde::initialise_from_mesh() {
 	/*
 	 * Create stiffness and mass matricies
 	 */
-	K = construct_stiffness_matrix(mesh);
+	if (D.is_null() && R.is_null()) {
+		K = construct_stiffness_matrix(mesh);
+	}
+	if (D.is_null() && !R.is_null()) {
+		K = R
+	}
+	if (!D.is_null() && R.is_null()) {
+		K = D
+	}
+	if (!D.is_null() && !R.is_null()) {
+		K = D;
+		update(1.0,K,1.0,R);
+	}
 	Mi = construct_mass_matrix(mesh);
 	Mb = construct_boundary_mass_matrix(mesh);
 
@@ -345,6 +350,40 @@ void Pde::initialise_from_mesh() {
 //	//Thyra::initializeApproxPreconditionedOp(*lowsFactory,LHSop,LHS_prec,LHS.ptr());
 //	//Thyra::initializePreconditionedOp<ST>(*lowsFactory,LHSop,Thyra::unspecifiedPrec<ST>(LHS_prec),LHS.ptr());
 //	Thyra::initializePreconditionedOp<ST>(*lowsFactory,LHS_op,Thyra::rightPrec<ST>(LHS_prec_w),LHS_w.ptr());
+}
+
+vtkSmartPointer<vtkUnstructuredGrid> Pde::get_vtk_grid() {
+	if (vtk_grid==NULL) {
+		vtk_grid = mesh.get_vtk_grid();
+
+		/*
+		 * setup scalar data
+		 */
+		vtkSmartPointer<vtkDoubleArray> newScalars = vtkSmartPointer<vtkDoubleArray>::New();
+		const int num_local_entries = u->getLocalLength();
+		newScalars->SetArray(u->getDataNonConst(0).getRawPtr(),num_local_entries,1);
+		newScalars->SetName("Concentration");
+
+		vtk_grid->GetPointData()->SetScalars(newScalars);
+	}
+	return vtk_grid;
+}
+
+std::string Pde::get_status_string() {
+	std::ostringstream ss;
+	ss << "Pde Status:" << std::endl;
+	ss << "\t" << total_number_of_particles << " particles." << std::endl;
+	ss << "\t" << number_of_particles_generated << " particles generated." << std::endl;
+	if (converged) {
+		ss << "\tsolver CONVERGED after "<< solver->getNumIters() << " iterations " << std::endl;
+	} else {
+		ss << "\tsolver DID NOT CONVERGE after "<< solver->getNumIters() << " iterations " << std::endl;
+	}
+	return ss.str();
+}
+
+double Pde::get_number_of_particles() {
+	return total_number_of_particles;
 }
 
 } /* namespace Moirai */

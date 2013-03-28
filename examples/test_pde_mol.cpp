@@ -22,8 +22,7 @@
  *      Author: mrobins
  */
 
-#include "Pde.h"
-#include "MyMpi.h"
+#include "Moirai.h"
 #include "boost/format.hpp"
 #include "zip.h"
 
@@ -36,7 +35,7 @@ int main(int argc, char **argv) {
 	const double dt_out = dt;
 	const double dx = 0.1;
 
-	Mpi::init(argc,argv);
+	Moirai::init(argc,argv);
 	Moirai::Pde p(dx,dt);
 
 	for (int i = 0; i < 1000; ++i) {
@@ -54,7 +53,8 @@ int main(int argc, char **argv) {
 		const int iterations = int(dt_out/dt + 0.5);
 		const double actual_dt = iterations*dt;
 		for (int j = 0; j < iterations; ++j) {
-			p.timestep_and_generate_particles(x,y,z);
+			p.timestep();
+			p.generate_particles(x,y,z);
 			std::cout << "generated "<<x.size()<<" particles so far..."<<std::endl;
 		}
 	}

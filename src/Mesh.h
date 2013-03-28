@@ -28,6 +28,9 @@
 #include <vector>
 #include "Log.h"
 
+#include <vtkUnstructuredGrid.h>
+#include <vtkSmartPointer.h>
+
 namespace Moirai {
 
 class Mesh {
@@ -85,6 +88,7 @@ public:
 	int get_space_dim();
 	bool is_in(double x, double y, double z);
 	GO get_nearest_node(double x, double y, double z);
+	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
 
 private:
 	std::vector<Cell> cells;
@@ -94,6 +98,9 @@ private:
 	std::vector<GO> global_boundary_ids;
 	std::vector<GO> global_interior_ids;
 	std::vector<GO> global_interior_ids_on_boundary;
+
+	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid;
+
 
 	int num_nodes_per_cell;
 	int num_nodes_per_face;
