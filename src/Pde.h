@@ -29,7 +29,6 @@
 #include "Types.h"
 
 #include <vector>
-
 #include <tuple>
 
 //#include <Thyra_TpetraThyraWrappers.hpp>

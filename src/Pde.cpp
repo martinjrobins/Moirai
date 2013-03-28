@@ -47,7 +47,7 @@ constexpr double Pde::omega;
 typedef boost::mt19937  base_generator_type;
 static base_generator_type R;
 
-Pde::Pde(const double dx, const double dt, const double buffer):dt(dt),buffer(buffer) {
+Pde::Pde(const double dx, const double dt):dt(dt) {
 	LOG(1,"Initialising mesh...");
 	mesh.initialise(dx);
 	LOG(1,"Initialising matricies with dt = "<<dt<<" and omega = "<<omega);
