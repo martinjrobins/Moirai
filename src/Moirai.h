@@ -27,6 +27,7 @@
 
 #include "Pde.h"
 #include "Io.h"
+#include "Types.h"
 
 namespace Moirai {
 	extern Teuchos::RCP<Teuchos::GlobalMPISession> mpiSession;

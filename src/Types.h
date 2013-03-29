@@ -28,6 +28,7 @@
 #include <Tpetra_DefaultPlatform.hpp>
 #include <Tpetra_Vector.hpp>
 #include <Tpetra_CrsMatrix.hpp>
+#include <Sacado_CacheFad_SFad.hpp>
 
 namespace Moirai {
 
@@ -48,6 +49,7 @@ typedef Tpetra::Map<LO, GO, Node>         map_type;
 typedef Tpetra::Export<LO, GO, Node>      export_type;
 typedef Tpetra::Import<LO, GO, Node>      import_type;
 typedef Tpetra::CrsGraph<LO, GO, Node>    sparse_graph_type;
+typedef Sacado::CacheFad::SFad<double,8> FadType;
 
 
 }

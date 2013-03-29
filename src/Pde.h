@@ -46,15 +46,16 @@ namespace Moirai {
 class Pde {
 public:
 	Pde(const double dx, const double dt);
+	Pde(const double dx, const double dt, std::function<FadType(FadType)> f);
 	void timestep();
-	void set_reaction(std::function<ST(ST)> f);
+	void set_reaction(std::function<FadType(FadType)> f);
 	void add_particle(const ST x, const ST y, const ST z);
 	void generate_particles(std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z);
 	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
 	std::string get_status_string();
 	double get_number_of_particles();
 private:
-	std::function<ST(ST)> function;
+	std::function<FadType(FadType)> function;
 	double dt;
 	int total_number_of_particles,number_of_particles_generated;
 	bool converged;

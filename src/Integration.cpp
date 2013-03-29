@@ -37,11 +37,6 @@
 
 // Sacado includes
 #include "Sacado.hpp"
-#include "Sacado_Fad_DVFad.hpp"
-#include "Sacado_Fad_SimpleFad.hpp"
-#include "Sacado_CacheFad_DFad.hpp"
-#include "Sacado_CacheFad_SFad.hpp"
-#include "Sacado_CacheFad_SLFad.hpp"
 
 namespace Moirai {
 
@@ -92,14 +87,13 @@ void evaluateMaterialTensor (ArrayOut& matTensorValues, const ArrayIn& evaluatio
   }
 }
 
-RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh, std::function<ST(ST)> function) {
+RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh, std::function<FadType(FadType)> function) {
 
 	using namespace Intrepid;
 
 	typedef Intrepid::FunctionSpaceTools IntrepidFSTools;
 	typedef Intrepid::RealSpaceTools<ST> IntrepidRSTools;
 	typedef Intrepid::CellTools<ST>      IntrepidCTools;
-	typedef Sacado::CacheFad::SFad<double,8> FadType;
 
 	/**********************************************************************************/
 	/********************************* GET CUBATURE For 3D cells***********************/
@@ -316,7 +310,8 @@ RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh, std::function<ST(
 		// compute nonlinear term
 		for(int c=0; c<worksetSize; c++){
 			for(int p=0; p<numCubPoints; p++){
-				f_of_u_AD(c,p) = function(u_FE_valAD(c,p).val());
+				f_of_u_AD(c,p) = function(u_FE_valAD(c,p));
+				//f_of_u_AD(c,p) = u_FE_valAD(c,p)*(1000.0-u_FE_valAD(c,p));
 			}
 		}
 
@@ -348,7 +343,13 @@ RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh, std::function<ST(
 				std::vector<ST> local_columns_contribution;
 				for (int cellCol = 0; cellCol < numFieldsG; ++cellCol) {
 					local_columns.push_back(mesh.get_cells()[cell].node_ids[cellCol]);
-					local_columns_contribution.push_back(worksetStiffMatrix (worksetCellOrdinal, cellRow, cellCol));
+					std::cout << 
+					        *cellResidualAD (worksetCellOrdinal, cellRow).dx()	
+						  << std::endl;
+					local_columns_contribution.push_back(
+						worksetStiffMatrix (worksetCellOrdinal, cellRow, cellCol) + 
+					        *cellResidualAD (worksetCellOrdinal, cellRow).dx()	
+					);
 				}// *** cell col loop ***
 				K->sumIntoGlobalValues (localRow, Teuchos::arrayViewFromVector(local_columns),
 						Teuchos::arrayViewFromVector(local_columns_contribution));

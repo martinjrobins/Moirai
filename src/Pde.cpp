@@ -54,6 +54,19 @@ Pde::Pde(const double dx, const double dt):
 		number_of_particles_generated(0) {
 
 	mesh.initialise(dx);
+	initialise_from_mesh();
+	R.seed(time(NULL));
+}
+
+Pde::Pde(const double dx, const double dt, std::function<FadType(FadType)> f):
+		dt(dt),
+		total_number_of_particles(0),
+		number_of_particles_generated(0) {
+
+	mesh.initialise(dx);
+	function = f;
+	function  = [](FadType u){return u*(1000.0-u);};
+	initialise_from_mesh();
 	R.seed(time(NULL));
 }
 
@@ -62,9 +75,9 @@ void Pde::timestep() {
 	using Tpetra::RTI::ZeroOp;
 	using Tpetra::RTI::reductionGlob;
 
-	if (RHS.is_null()) {
+        if (RHS.is_null()) {
 		initialise_from_mesh();
-	}
+	}	
 
 	RHS->apply(*X.getConst(),*Y);
 
@@ -87,6 +100,7 @@ void Pde::add_particle(const ST x, const ST y, const ST z) {
 
 void Pde::generate_particles(
 		std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z) {
+
 
 	flux->elementWiseMultiply(1.0,*areas.getConst(),*lambda.getConst(),0.0);
 
@@ -138,9 +152,10 @@ void Pde::generate_particles(
 }
 
 
-void Pde::set_reaction(std::function<ST(ST)> f) {
+void Pde::set_reaction(std::function<FadType(FadType)> f) {
 	function = f;
 }
+
 
 void Pde::initialise_from_mesh() {
 	using Tpetra::RTI::reduce;
