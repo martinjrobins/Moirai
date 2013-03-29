@@ -47,14 +47,14 @@ class Pde {
 public:
 	Pde(const double dx, const double dt);
 	void timestep();
-	void set_reaction(std::function<ST(ST)> function);
-	void set_diffusion();
+	void set_reaction(std::function<ST(ST)> f);
 	void add_particle(const ST x, const ST y, const ST z);
 	void generate_particles(std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z);
 	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
 	std::string get_status_string();
 	double get_number_of_particles();
 private:
+	std::function<ST(ST)> function;
 	double dt;
 	int total_number_of_particles,number_of_particles_generated;
 	bool converged;
@@ -65,7 +65,7 @@ private:
 
 	RCP<vector_type> volumes,areas;
 	RCP<multivector_type> X,Y,u,lambda,flux,number_of_particles;
-	RCP<sparse_matrix_type> LHS,LHS_prec,RHS,K,Mi,Mb,R,D;
+	RCP<sparse_matrix_type> LHS,LHS_prec,RHS,K,Mi,Mb;
 
 //	RCP<Thyra::MultiVectorBase<ST> > X_w,Y_w;
 //	RCP<const Thyra::LinearOpBase<ST> > RHS_w;

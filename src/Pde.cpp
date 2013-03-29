@@ -53,7 +53,6 @@ Pde::Pde(const double dx, const double dt):
 		total_number_of_particles(0),
 		number_of_particles_generated(0) {
 
-	LOG(1,"Initialising mesh...");
 	mesh.initialise(dx);
 	R.seed(time(NULL));
 }
@@ -138,12 +137,9 @@ void Pde::generate_particles(
 	total_number_of_particles = total_number_of_particles-number_of_particles_generated+Ld*dt;
 }
 
-void Pde::set_diffusion() {
-	D = construct_stiffness_matrix(mesh);
-}
 
-void Pde::set_reaction(std::function<ST(ST)> function) {
-	R = construct_reaction_matrix(mesh, function);
+void Pde::set_reaction(std::function<ST(ST)> f) {
+	function = f;
 }
 
 void Pde::initialise_from_mesh() {
@@ -189,18 +185,11 @@ void Pde::initialise_from_mesh() {
 	/*
 	 * Create stiffness and mass matricies
 	 */
-	if (D.is_null() && R.is_null()) {
+
+	if (function) {
+		K = construct_stiffness_matrix(mesh,function);
+	} else {
 		K = construct_stiffness_matrix(mesh);
-	}
-	if (D.is_null() && !R.is_null()) {
-		K = R
-	}
-	if (!D.is_null() && R.is_null()) {
-		K = D
-	}
-	if (!D.is_null() && !R.is_null()) {
-		K = D;
-		update(1.0,K,1.0,R);
 	}
 	Mi = construct_mass_matrix(mesh);
 	Mb = construct_boundary_mass_matrix(mesh);

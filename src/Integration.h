@@ -27,10 +27,13 @@
 
 #include "Mesh.h"
 #include "Types.h"
+#include <functional>
 
 namespace Moirai {
 
 RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh);
+
+RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh, std::function<ST(ST)> function);
 
 RCP<sparse_matrix_type> construct_mass_matrix(Mesh& mesh);
 
