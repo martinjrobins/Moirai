@@ -139,9 +139,10 @@ void Pde::generate_particles(
 		//tau = tau - log(U())/Ld;
 		//number_of_particles_generated++;
 	}
-
-	u->scale(ST(total_number_of_particles-number_of_particles_generated+Ld*dt)/ST(total_number_of_particles));
-	total_number_of_particles = total_number_of_particles-number_of_particles_generated+Ld*dt;
+	const ST scale_factor = ST(total_number_of_particles-number_of_particles_generated+Ld*dt)/ST(total_number_of_particles);
+	u->scale(scale_factor);
+	number_of_particles->scale(scale_factor);
+	total_number_of_particles += -number_of_particles_generated+Ld*dt;
 }
 
 
@@ -182,13 +183,13 @@ void Pde::react(const double ku, const double kb) {
 	std::cout <<"delta_n_bimolar = " << delta_n_bimolar << std::endl;
 
 	const int N = total_number_of_particles;
-	const int newN = total_number_of_particles + delta_n_unimolar + delta_n_bimolar;
 	const ST A = thisn->dot(*thisu);
 
-	ST unimolecular_scale = (N + delta_n_unimolar) / N;
-	ST bimolecular_scale = (N + delta_n_bimolar) / A;
+	ST unimolecular_scale = delta_n_unimolar / N;
+	ST bimolecular_scale = delta_n_bimolar / A;
 
-	TPETRA_UNARY_TRANSFORM(thisu,unimolecular_scale * thisu + bimolecular_scale * thisu*thisu);
+	TPETRA_UNARY_TRANSFORM(thisu,thisu + unimolecular_scale * thisu + bimolecular_scale * thisu*thisu);
+	TPETRA_UNARY_TRANSFORM(thisn,thisn + unimolecular_scale * thisn + bimolecular_scale * thisn*thisn);
 
 	total_number_of_particles += delta_n_unimolar + delta_n_bimolar;
 }
