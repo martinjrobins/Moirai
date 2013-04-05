@@ -182,7 +182,7 @@ void Pde::react(const double ku, const double kb) {
 	std::cout <<"delta_n_unimolar = " << delta_n_unimolar << std::endl;
 	std::cout <<"delta_n_bimolar = " << delta_n_bimolar << std::endl;
 
-	const int N = total_number_of_particles;
+	const ST N = total_number_of_particles;
 	const ST A = thisn->dot(*thisu);
 
 	ST unimolecular_scale = delta_n_unimolar / N;
