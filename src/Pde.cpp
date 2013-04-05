@@ -51,24 +51,14 @@ static base_generator_type R;
 Pde::Pde(const double dx, const double dt):
 		dt(dt),
 		total_number_of_particles(0),
-		number_of_particles_generated(0) {
+		number_of_particles_generated(0),
+		number_of_particles_reacted(0) {
 
 	mesh.initialise(dx);
 	initialise_from_mesh();
 	R.seed(time(NULL));
 }
 
-Pde::Pde(const double dx, const double dt, std::function<FadType(FadType)> f):
-		dt(dt),
-		total_number_of_particles(0),
-		number_of_particles_generated(0) {
-
-	mesh.initialise(dx);
-	function = f;
-	function  = [](FadType u){return u*(1000.0-u);};
-	initialise_from_mesh();
-	R.seed(time(NULL));
-}
 
 void Pde::timestep() {
 	using Tpetra::RTI::reduce;
@@ -125,7 +115,10 @@ void Pde::generate_particles(
 	//double tau = -log(U())/Ld;
 	//number_of_particles_generated = 0;
 	//while (tau < dt) {
+
 	number_of_particles_generated = P();
+	std::cout << "poisson mean = " << sum_values << std::endl;
+		std::cout << "number generated = " << number_of_particles_generated << std::endl;
 
 	for (int i = 0; i < number_of_particles_generated; ++i) {
 		const double r = U()*sum_values;
@@ -152,10 +145,53 @@ void Pde::generate_particles(
 }
 
 
-void Pde::set_reaction(std::function<FadType(FadType)> f) {
-	function = f;
-}
 
+void Pde::react(const double ku, const double kb) {
+	using Tpetra::RTI::reduce;
+	using Tpetra::RTI::ZeroOp;
+	using Tpetra::RTI::reductionGlob;
+	RCP<vector_type> thisn = number_of_particles->getVectorNonConst(0);
+	RCP<vector_type> thisu = u->getVectorNonConst(0);
+
+
+	ST expected_unimolar_reactions = dt*ku*TPETRA_REDUCE1(thisn,
+			thisn,
+			ZeroOp<ST>, std::plus<ST>());
+	ST expected_bimolar_reactions = dt*kb*TPETRA_REDUCE2(thisn, volumes, thisn*(thisn-1)/volumes, ZeroOp<ST>, std::plus<ST>());
+
+	boost::variate_generator<base_generator_type&, boost::poisson_distribution<> >
+	P_u(R,boost::poisson_distribution<>(std::abs(expected_unimolar_reactions)));
+	boost::variate_generator<base_generator_type&, boost::poisson_distribution<> >
+	P_b(R,boost::poisson_distribution<>(std::abs(expected_bimolar_reactions)));
+
+	int delta_n_unimolar, delta_n_bimolar;
+	if (std::signbit(expected_unimolar_reactions)) {
+		delta_n_unimolar = -P_u();
+	} else {
+		delta_n_unimolar = P_u();
+	}
+	if (std::signbit(expected_bimolar_reactions)) {
+		delta_n_bimolar = -P_b();
+	} else {
+		delta_n_bimolar = P_b();
+	}
+
+	std::cout <<"expected_unimolar_reactions = " << expected_unimolar_reactions << std::endl;
+	std::cout <<"expected_bimolar_reactions = " << expected_bimolar_reactions << std::endl;
+	std::cout <<"delta_n_unimolar = " << delta_n_unimolar << std::endl;
+	std::cout <<"delta_n_bimolar = " << delta_n_bimolar << std::endl;
+
+	const int N = total_number_of_particles;
+	const int newN = total_number_of_particles + delta_n_unimolar + delta_n_bimolar;
+	const ST A = thisn->dot(*thisu);
+
+	ST unimolecular_scale = (N + delta_n_unimolar) / N;
+	ST bimolecular_scale = (N + delta_n_bimolar) / A;
+
+	TPETRA_UNARY_TRANSFORM(thisu,unimolecular_scale * thisu + bimolecular_scale * thisu*thisu);
+
+	total_number_of_particles += delta_n_unimolar + delta_n_bimolar;
+}
 
 void Pde::initialise_from_mesh() {
 	using Tpetra::RTI::reduce;
@@ -190,6 +226,7 @@ void Pde::initialise_from_mesh() {
 	X = Tpetra::createMultiVector<ST,LO,GO,Node>(allMap,1);
 	Y = Tpetra::createMultiVector<ST,LO,GO,Node>(allMap,1);
 	u = X->offsetViewNonConst(interiorMap,0);
+	f = Tpetra::createMultiVector<ST,LO,GO,Node>(u->getMap(),1);
 	lambda = X->offsetViewNonConst(boundaryMap,ni);
 	flux = Tpetra::createMultiVector<ST,LO,GO,Node>(lambda->getMap(),1);
 	number_of_particles = Tpetra::createMultiVector<ST,LO,GO,Node>(u->getMap(),1);
@@ -201,11 +238,9 @@ void Pde::initialise_from_mesh() {
 	 * Create stiffness and mass matricies
 	 */
 
-	if (function) {
-		K = construct_stiffness_matrix(mesh,function);
-	} else {
-		K = construct_stiffness_matrix(mesh);
-	}
+
+	K = construct_stiffness_matrix(mesh);
+
 	Mi = construct_mass_matrix(mesh);
 	Mb = construct_boundary_mass_matrix(mesh);
 
@@ -378,6 +413,7 @@ std::string Pde::get_status_string() {
 	ss << "Pde Status:" << std::endl;
 	ss << "\t" << total_number_of_particles << " particles." << std::endl;
 	ss << "\t" << number_of_particles_generated << " particles generated." << std::endl;
+	ss << "\t" << number_of_particles_reacted << " particles reacted." << std::endl;
 	if (converged) {
 		ss << "\tsolver CONVERGED after "<< solver->getNumIters() << " iterations " << std::endl;
 	} else {

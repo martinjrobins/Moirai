@@ -232,7 +232,7 @@ RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh, std::function<Fad
 		FieldContainer<FadType> cellResidualAD(worksetSize, numFieldsG);
 		for (int c=0; c<worksetSize; c++) {
 			for(int f=0; f<numFieldsG; f++) {
-				u_coeffsAD(c,f) = FadType(numFieldsG, f, 1.3);
+				u_coeffsAD(c,f) = FadType(numFieldsG, f, 1.0);
 			}
 		}
 
@@ -347,7 +347,6 @@ RCP<sparse_matrix_type> construct_stiffness_matrix(Mesh& mesh, std::function<Fad
 					        *cellResidualAD (worksetCellOrdinal, cellRow).dx()	
 						  << std::endl;
 					local_columns_contribution.push_back(
-						worksetStiffMatrix (worksetCellOrdinal, cellRow, cellCol) + 
 					        *cellResidualAD (worksetCellOrdinal, cellRow).dx()	
 					);
 				}// *** cell col loop ***

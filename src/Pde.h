@@ -46,18 +46,16 @@ namespace Moirai {
 class Pde {
 public:
 	Pde(const double dx, const double dt);
-	Pde(const double dx, const double dt, std::function<FadType(FadType)> f);
 	void timestep();
-	void set_reaction(std::function<FadType(FadType)> f);
 	void add_particle(const ST x, const ST y, const ST z);
 	void generate_particles(std::vector<ST>& x,std::vector<ST>& y,std::vector<ST>& z);
+	void react(const double ku, const double kb);
 	vtkSmartPointer<vtkUnstructuredGrid> get_vtk_grid();
 	std::string get_status_string();
 	double get_number_of_particles();
 private:
-	std::function<FadType(FadType)> function;
 	double dt;
-	int total_number_of_particles,number_of_particles_generated;
+	int total_number_of_particles,number_of_particles_generated,number_of_particles_reacted;
 	bool converged;
 	int number_of_iterations;
 	static constexpr double omega = 1.0;
@@ -65,7 +63,7 @@ private:
 	vtkSmartPointer<vtkUnstructuredGrid> vtk_grid;
 
 	RCP<vector_type> volumes,areas;
-	RCP<multivector_type> X,Y,u,lambda,flux,number_of_particles;
+	RCP<multivector_type> X,Y,u,f,lambda,flux,number_of_particles;
 	RCP<sparse_matrix_type> LHS,LHS_prec,RHS,K,Mi,Mb;
 
 //	RCP<Thyra::MultiVectorBase<ST> > X_w,Y_w;
