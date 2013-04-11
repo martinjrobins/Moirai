@@ -31,11 +31,7 @@ if(EXISTS /scratch/robinsonm/pkg/Trilinos/debug)
 endif(EXISTS /scratch/robinsonm/pkg/Trilinos/debug)
 endif(CMAKE_BUILD_TYPE MATCHES Debug)
 
-find_path(Trilinos_PREFIX test PATHS
-			/home/mrobins/pkg/Trilinos/debug/
-			/scratch/robinsonm/pkg/Trilinos/debug)
-#SET(Trilinos_PREFIX $ENV{HOME}/pkg/Trilinos/debug)
-message(STATUS ${Trilinos_PREFIX} aaaaaaaaa)
+
 SET(CMAKE_PREFIX_PATH ${Trilinos_PREFIX} ${CMAKE_PREFIX_PATH})
 
 set(CMAKE_SHARED_LINKER_FLAGS "-Wl,--no-undefined")
